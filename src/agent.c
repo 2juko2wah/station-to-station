@@ -12,60 +12,53 @@
 void InitAgent(Agent *agent) {
     agent->heading  = SDL_randf() * 360.0f;
     agent->position = Vec2New(WIDTH / 2.0f, HEIGHT / 2.0f);
-
-    agent->front       = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading), SENSOR_OFFSET));
-    agent->front_left  = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading - SENSOR_ANGLE), SENSOR_OFFSET));
-    agent->front_right = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading + SENSOR_ANGLE), SENSOR_OFFSET));
 }
 
 void UpdateAgent(Agent *agent, Field *field, float dt) {
-        if (agent->position.y < 0.0f) {
-            agent->position.y = 0.0f;
-            agent->heading = DegNorm(360.0f - agent->heading);
-        } else if (agent->position.y >= HEIGHT) {
-            agent->position.y = HEIGHT - 1.0f;
-            agent->heading = DegNorm(360.0f - agent->heading);
-        }
-        if (agent->position.x < 0.0f) {
-            agent->position.x = 0.0f;
-            agent->heading = DegNorm(180.0f - agent->heading);
-        } else if (agent->position.x >= WIDTH) {
-            agent->position.x = (float)WIDTH - 1.0f;
-            agent->heading = DegNorm(180.0f - agent->heading);
-            
-        }
+    Vec2 front       = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading)), SENSOR_OFFSET));
+    Vec2 front_left  = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading - SENSOR_ANGLE)), SENSOR_OFFSET));
+    Vec2 front_right = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading + SENSOR_ANGLE)), SENSOR_OFFSET));
 
-        float left = 0.0f;
-        float forward = 0.0f;
-        float right = 0.0f;
+    if (agent->position.y < 0.0f) {
+        agent->position.y = 0.0f;
+        agent->heading = DegNorm(360.0f - agent->heading);
+    } else if (agent->position.y >= HEIGHT) {
+        agent->position.y = HEIGHT - 1.0f;
+        agent->heading = DegNorm(360.0f - agent->heading);
+    }
+    if (agent->position.x < 0.0f) {
+        agent->position.x = 0.0f;
+        agent->heading = DegNorm(180.0f - agent->heading);
+    } else if (agent->position.x >= WIDTH) {
+        agent->position.x = (float)WIDTH - 1.0f;
+        agent->heading = DegNorm(180.0f - agent->heading);
         
-        if (!(agent->front_left.x >= WIDTH  || agent->front_left.x < 0.0f || agent->front_left.y >= HEIGHT || agent->front_left.y < 0.0f)) {
-            left = field->trail[(int)agent->front_left.x][(int)agent->front_left.y];
-        } 
+    }
 
-        if (!(agent->front.x >= WIDTH  || agent->front.x < 0.0f || agent->front.y >= HEIGHT || agent->front.y < 0.0f)) {
-            forward = field->trail[(int)agent->front.x][(int)agent->front.y];
-        }
-        
-        if (!(agent->front_right.x >= WIDTH  || agent->front_right.x < 0.0f || agent->front_right.y >= HEIGHT || agent->front_right.y < 0.0f)) {
-            right = field->trail[(int)agent->front_right.x][(int)agent->front_right.y];
-        }
+    float left = 0.0f;
+    float forward = 0.0f;
+    float right = 0.0f;
+    
+    if (!(front_left.x >= WIDTH  || front_left.x < 0.0f || front_left.y >= HEIGHT || front_left.y < 0.0f)) {
+        left = field->trail[(int)front_left.x][(int)front_left.y];
+    } 
+    if (!(front.x >= WIDTH  || front.x < 0.0f || front.y >= HEIGHT || front.y < 0.0f)) {
+        forward = field->trail[(int)front.x][(int)front.y];
+    }
+    
+    if (!(front_right.x >= WIDTH  || front_right.x < 0.0f || front_right.y >= HEIGHT || front_right.y < 0.0f)) {
+        right = field->trail[(int)front_right.x][(int)front_right.y];
+    }
+    if (left > forward && left > right) {
+        agent->heading -= HEADING_SPEED;
+    } else if (right > forward && right > left) {
+        agent->heading += HEADING_SPEED;
+    } else {
+        agent->heading += (2.0f * (SDL_randf() - 0.5f)) * RANDOMNESS;
+    }
 
-        if (left > forward && left > right) {
-            agent->heading -= HEADING_SPEED;
-        } else if (right > forward && right > left) {
-            agent->heading += HEADING_SPEED;
-        } else {
-            agent->heading += (2.0f * (SDL_randf() - 0.5f)) * RANDOMNESS;
-        }
-
-        field->trail[(int)agent->position.x][(int)agent->position.y] = DEPOSIT;
-
-        agent->position = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading), AGENT_SPEED * dt));
-
-        agent->front       = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading), SENSOR_OFFSET));
-        agent->front_left  = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading - SENSOR_ANGLE)), SENSOR_OFFSET));
-        agent->front_right = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading + SENSOR_ANGLE)), SENSOR_OFFSET));
+    field->trail[(int)agent->position.x][(int)agent->position.y] = DEPOSIT;
+    agent->position = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading), AGENT_SPEED * dt));
 }
 
 void InitField(Field *field) {
@@ -75,18 +68,19 @@ void InitField(Field *field) {
         }
     }
 
-    field->num_agents   = AGENT_CAPACITY;
-    field->num_stations = 0;
+    field->num_attractors = 0;
+    field->cap_attractors = STATION_CAPACITY;
 
-    field->cap_agents   = AGENT_CAPACITY;
-    field->cap_stations = STATION_CAPACITY;
+    field->num_deflectors = 0;
+    field->cap_deflectors = STATION_CAPACITY;
 
-    field->agents   = SDL_malloc(sizeof(Agent) * AGENT_CAPACITY);
-    field->stations = SDL_malloc(sizeof(Vec2) * STATION_CAPACITY);
+    field->agents     = SDL_malloc(sizeof(Agent) * AGENT_CAPACITY);
+    field->attractors = SDL_malloc(sizeof(Vec2) * STATION_CAPACITY);
+    field->deflectors = SDL_malloc(sizeof(Vec2) * STATION_CAPACITY);
 }
 
 void UpdateField(Field *field, float dt) {
-    uint8_t buffer[WIDTH][HEIGHT];
+    int16_t buffer[WIDTH][HEIGHT];
     
     SDL_memcpy(buffer, field->trail, sizeof(buffer));
 
@@ -110,44 +104,87 @@ void UpdateField(Field *field, float dt) {
 }
 
 
-void PlaceStation(Field *field, uint64_t x, uint64_t y) {
-    if (field->num_stations > field->cap_stations) {
-        field->cap_stations *= 2;
-        field->stations = realloc(field->stations, sizeof(Vec2) * field->cap_stations);
+void PlaceAttractor(Field *field, uint64_t x, uint64_t y) {
+    if (field->num_attractors > field->cap_attractors) {
+        field->cap_attractors *= 2;
+        field->attractors = realloc(field->attractors, sizeof(Vec2) * field->cap_attractors);
 
-        if (!field->stations) {
+        if (!field->attractors) {
             printf("[ERROR]: Array resize failed\n");
             exit(1);
         }
     }
 
-    for (int i = 0; i < field->num_stations; ++i) {
-        if (IN_BOUNDS(x, field->stations[i].x - STATION_WIDTH, field->stations[i].x + STATION_WIDTH) && IN_BOUNDS(y, field->stations[i].y - STATION_HEIGHT, field->stations[i].y + STATION_HEIGHT)) { 
+    for (int i = 0; i < field->num_attractors; ++i) {
+        if (IN_BOUNDS(x, field->attractors[i].x - STATION_WIDTH, field->attractors[i].x + STATION_WIDTH) && IN_BOUNDS(y, field->attractors[i].y - STATION_HEIGHT, field->attractors[i].y + STATION_HEIGHT)) { 
             printf("[Warning]: \"Station to close to Station %d\" \n", i);
             return; 
         }
     }
 
-    field->stations[field->num_stations++] = (Vec2) { .x = x, .y = y };
+    field->attractors[field->num_attractors++] = (Vec2) { .x = x, .y = y };
 }
 
-void RemoveStation(Field *field, uint64_t x, uint64_t y) {
-    for (int i = 0; i < field->num_stations; ++i) {
-        if (IN_BOUNDS(x, field->stations[i].x - STATION_WIDTH / 2, field->stations[i].x + STATION_WIDTH / 2) && IN_BOUNDS(y, field->stations[i].y - STATION_HEIGHT / 2, field->stations[i].y + STATION_HEIGHT / 2)) { 
-            field->stations[i] = field->stations[--field->num_stations];
+void RemoveAttractor(Field *field, uint64_t x, uint64_t y) {
+    for (int i = 0; i < field->num_attractors; ++i) {
+        if (IN_BOUNDS(x, field->attractors[i].x - STATION_WIDTH / 2, field->attractors[i].x + STATION_WIDTH / 2) && IN_BOUNDS(y, field->attractors[i].y - STATION_HEIGHT / 2, field->attractors[i].y + STATION_HEIGHT / 2)) { 
+            field->attractors[i] = field->attractors[--field->num_attractors];
             
         }
     }
 }
 
-void UpdateStations(Field *field, float dt) {
-    for (int i = 0; i < field->num_stations; ++i) {
-        Vec2 pos = field->stations[i];
+void UpdateAttractors(Field *field, float dt) {
+    for (int i = 0; i < field->num_attractors; ++i) {
+        Vec2 pos = field->attractors[i];
         for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
             for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
                 if (pos.x + dx >= WIDTH || pos.x + dx < 0) continue;
                 if (pos.y + dy >= HEIGHT || pos.y + dy < 0) continue;
                 field->trail[(int)(pos.x + dx)][(int)(pos.y + dy)] = 255;
+            }
+        }
+    }
+}
+
+void PlaceDeflector(Field *field, uint64_t x, uint64_t y) {
+    if (field->num_deflectors > field->cap_deflectors) {
+        field->cap_deflectors *= 2;
+        field->deflectors = realloc(field->deflectors, sizeof(Vec2) * field->cap_deflectors);
+
+        if (!field->deflectors) {
+            printf("[ERROR]: Array resize failed\n");
+            exit(1);
+        }
+    }
+
+    for (int i = 0; i < field->num_deflectors; ++i) {
+        if (IN_BOUNDS(x, field->deflectors[i].x - STATION_WIDTH, field->deflectors[i].x + STATION_WIDTH) && IN_BOUNDS(y, field->deflectors[i].y - STATION_HEIGHT, field->deflectors[i].y + STATION_HEIGHT)) { 
+            printf("[Warning]: \"Station to close to Station %d\" \n", i);
+            return; 
+        }
+    }
+
+    field->deflectors[field->num_deflectors++] = (Vec2) { .x = x, .y = y };
+}
+
+void RemoveDeflector(Field *field, uint64_t x, uint64_t y) {
+    for (int i = 0; i < field->num_deflectors; ++i) {
+        if (IN_BOUNDS(x, field->deflectors[i].x - STATION_WIDTH / 2, field->deflectors[i].x + STATION_WIDTH / 2) && IN_BOUNDS(y, field->deflectors[i].y - STATION_HEIGHT / 2, field->deflectors[i].y + STATION_HEIGHT / 2)) { 
+            field->deflectors[i] = field->deflectors[--field->num_deflectors];
+            
+        }
+    }
+}
+
+void UpdateDeflectors(Field *field, float dt) {
+    for (int i = 0; i < field->num_deflectors; ++i) {
+        Vec2 pos = field->deflectors[i];
+        for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
+            for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
+                if (pos.x + dx >= WIDTH || pos.x + dx < 0) continue;
+                if (pos.y + dy >= HEIGHT || pos.y + dy < 0) continue;
+                field->trail[(int)(pos.x + dx)][(int)(pos.y + dy)] = -255;
             }
         }
     }

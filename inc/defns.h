@@ -9,15 +9,15 @@
 #define AGENT_CAPACITY 50000
 #define STATION_CAPACITY 20
 
-#define STATION_HEIGHT 16
-#define STATION_WIDTH  16
+#define STATION_HEIGHT 10
+#define STATION_WIDTH  10
 
 #define AGENT_SPEED 50
-#define DEPOSIT 6
-#define DECAY 0.97
+#define DEPOSIT 5
+#define DECAY 0.93
 #define HEADING_SPEED 25
 #define SENSOR_OFFSET 15
-#define SENSOR_ANGLE  50
+#define SENSOR_ANGLE  30
 
 #define RANDOMNESS 0.2
 

@@ -20,6 +20,9 @@ static Field field;
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 
+static SDL_Texture *trail_texture = NULL;
+static uint8_t pbuffer[HEIGHT][WIDTH][4];
+
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     *appstate = &(State) { .dt = 0.001f };
     
@@ -34,10 +37,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+    trail_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
     SDL_SetRenderLogicalPresentation(renderer, WIDTH, HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
     InitField(&field);
-    for (int i = 0; i < field.num_agents; ++i) {
+    for (int i = 0; i < AGENT_CAPACITY; ++i) {
         InitAgent(&(field.agents[i]));
     }
 
@@ -59,10 +63,14 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         
         switch (mouse->button) {
             case SDL_BUTTON_LEFT:
-                PlaceStation(&field, (int)logical_x, (int)logical_y);
+                PlaceAttractor(&field, (int)logical_x, (int)logical_y);
+                break;
+            case SDL_BUTTON_MIDDLE:
+                RemoveAttractor(&field, (int)logical_x, (int)logical_y);
+                RemoveDeflector(&field, (int)logical_x, (int)logical_y);
                 break;
             case SDL_BUTTON_RIGHT:
-                RemoveStation(&field, (int)logical_x, (int)logical_y);
+                PlaceDeflector(&field, (int)logical_x, (int)logical_y);
                 break;
         }
     }
@@ -71,7 +79,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         SDL_KeyboardEvent *keyboard = (SDL_KeyboardEvent *)event;
         switch (keyboard->key) {
             case SDLK_R:
-                for (int i = 0; i < field.num_agents; ++i) {
+                for (int i = 0; i < AGENT_CAPACITY; ++i) {
                    InitAgent(&(field.agents[i]));
                 }
                 break;
@@ -92,40 +100,55 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     }
 
     UpdateField(&field, state->dt);
-    UpdateStations(&field, state->dt);
+    UpdateAttractors(&field, state->dt);
+    UpdateDeflectors(&field, state->dt);
     
-    for (int i = 0; i < field.num_agents; ++i) {
+    for (int i = 0; i < AGENT_CAPACITY; ++i) {
         UpdateAgent(&(field.agents[i]), &field, state->dt);
     }
-
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     
     for (int y = 0; y < HEIGHT; ++y) {
         for (int x = 0; x < WIDTH; ++x) {
-            SDL_SetRenderDrawColor(renderer, 0, field.trail[x][y], 0, 255);
-            SDL_RenderPoint(renderer, x, y);
+            uint8_t v = field.trail[x][y];
+            pbuffer[y][x][0] = 255;
+            pbuffer[y][x][1] = v;
+            pbuffer[y][x][2] = v;
+            pbuffer[y][x][3] = v;
         }
     }
 
-    for (int agent = 0; agent < field.num_agents; ++agent) {
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderPoint(renderer, field.agents[agent].position.x, field.agents[agent].position.y);
+    for (int agent = 0; agent < AGENT_CAPACITY; ++agent) {
+        Vec2 p = field.agents[agent].position;
+
+        if (p.x >= 0 && p.x < WIDTH && p.y >= 0 && p.y < HEIGHT) {
+            pbuffer[(int)p.y][(int)p.x][0] = 255;
+            pbuffer[(int)p.y][(int)p.x][1] = 255;
+            pbuffer[(int)p.y][(int)p.x][2] = 255;
+            pbuffer[(int)p.y][(int)p.x][3] = 255;
+        }
     }
-
-    // for (int station = 0; station < field.num_stations; ++station) {
-    //     SDL_SetRenderDrawColor(renderer, 123,123, 123, 255);
-    //     SDL_RenderFillRect(renderer, &(SDL_FRect) { .x = field.stations[station].x - STATION_WIDTH / 2, .y = field.stations[station].y - STATION_HEIGHT / 2, .h = STATION_HEIGHT, .w = STATION_WIDTH });
-    // }
-
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_RenderPoint(renderer, field.agents[0].front.x, field.agents[0].front.y);
-    SDL_RenderPoint(renderer, field.agents[0].front_left.x, field.agents[0].front_left.y);
-    SDL_RenderPoint(renderer, field.agents[0].front_right.x, field.agents[0].front_right.y);
-
     
+    for (int agent = 0; agent < field.num_attractors; ++agent) {
+        Vec2 pos = field.attractors[agent];
 
+        for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
+            for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
+                if (pos.x + dx >= 0 && pos.x + dx < WIDTH && pos.y + dy >= 0 && pos.y + dy < HEIGHT) {
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][0] = 255;
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][1] = 0;
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][2] = 255;
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][3] = 0;
+                }
+            }
+        }
+
+    }
+    
+    SDL_UpdateTexture(trail_texture, NULL, pbuffer, WIDTH*4);
+    SDL_RenderTexture(renderer,trail_texture, NULL, NULL);
     SDL_RenderPresent(renderer);
     
     last_time = now;
@@ -134,5 +157,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+    SDL_DestroyTexture(trail_texture);
     return;
 }
