@@ -10,8 +10,8 @@
 #include "defns.h"
 
 void InitAgent(Agent *agent) {
-    agent->heading  = SDL_randf() * 360;
-    agent->position = Vec2New(WIDTH / 2, HEIGHT / 2);
+    agent->heading  = SDL_randf() * 360.0f;
+    agent->position = Vec2New(WIDTH / 2.0f, HEIGHT / 2.0f);
 
     agent->front       = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading), SENSOR_OFFSET));
     agent->front_left  = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading - SENSOR_ANGLE), SENSOR_OFFSET));
@@ -19,15 +19,15 @@ void InitAgent(Agent *agent) {
 }
 
 void UpdateAgent(Agent *agent, Field *field, float dt) {
-        if (agent->position.y < 0) {
-            agent->position.y = 0;
+        if (agent->position.y < 0.0f) {
+            agent->position.y = 0.0f;
             agent->heading = DegNorm(360.0f - agent->heading);
         } else if (agent->position.y >= HEIGHT) {
-            agent->position.y = HEIGHT - 1;
+            agent->position.y = HEIGHT - 1.0f;
             agent->heading = DegNorm(360.0f - agent->heading);
         }
-        if (agent->position.x < 0) {
-            agent->position.x = 0;
+        if (agent->position.x < 0.0f) {
+            agent->position.x = 0.0f;
             agent->heading = DegNorm(180.0f - agent->heading);
         } else if (agent->position.x >= WIDTH) {
             agent->position.x = (float)WIDTH - 1.0f;
@@ -35,19 +35,19 @@ void UpdateAgent(Agent *agent, Field *field, float dt) {
             
         }
 
-        float left = 0;
-        float forward = 0;
-        float right = 0;
+        float left = 0.0f;
+        float forward = 0.0f;
+        float right = 0.0f;
         
-        if (!(agent->front_left.x >= WIDTH  || agent->front_left.x < 0 || agent->front_left.y >= HEIGHT || agent->front_left.y < 0)) {
+        if (!(agent->front_left.x >= WIDTH  || agent->front_left.x < 0.0f || agent->front_left.y >= HEIGHT || agent->front_left.y < 0.0f)) {
             left = field->trail[(int)agent->front_left.x][(int)agent->front_left.y];
         } 
 
-        if (!(agent->front.x >= WIDTH  || agent->front.x < 0 || agent->front.y >= HEIGHT || agent->front.y < 0)) {
+        if (!(agent->front.x >= WIDTH  || agent->front.x < 0.0f || agent->front.y >= HEIGHT || agent->front.y < 0.0f)) {
             forward = field->trail[(int)agent->front.x][(int)agent->front.y];
         }
         
-        if (!(agent->front_right.x >= WIDTH  || agent->front_right.x < 0 || agent->front_right.y >= HEIGHT || agent->front_right.y < 0)) {
+        if (!(agent->front_right.x >= WIDTH  || agent->front_right.x < 0.0f || agent->front_right.y >= HEIGHT || agent->front_right.y < 0.0f)) {
             right = field->trail[(int)agent->front_right.x][(int)agent->front_right.y];
         }
 
@@ -56,7 +56,7 @@ void UpdateAgent(Agent *agent, Field *field, float dt) {
         } else if (right > forward && right > left) {
             agent->heading += HEADING_SPEED;
         } else {
-            agent->heading += (2 * (SDL_randf() - 0.5)) * RANDOMNESS;
+            agent->heading += (2.0f * (SDL_randf() - 0.5f)) * RANDOMNESS;
         }
 
         field->trail[(int)agent->position.x][(int)agent->position.y] = DEPOSIT;
@@ -143,8 +143,8 @@ void RemoveStation(Field *field, uint64_t x, uint64_t y) {
 void UpdateStations(Field *field, float dt) {
     for (int i = 0; i < field->num_stations; ++i) {
         Vec2 pos = field->stations[i];
-        for (int dy = -(STATION_HEIGHT / 2); dy <= (STATION_HEIGHT / 2); ++dy) {
-            for (int dx = -(STATION_WIDTH / 2); dx <= (STATION_WIDTH / 2); ++dx) {
+        for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
+            for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
                 if (pos.x + dx >= WIDTH || pos.x + dx < 0) continue;
                 if (pos.y + dy >= HEIGHT || pos.y + dy < 0) continue;
                 field->trail[(int)(pos.x + dx)][(int)(pos.y + dy)] = 255;

@@ -1,7 +1,7 @@
 #ifndef DEFNS_HEADER
-#define DEFNS
+#define DEFNS_HEADER
 
-#define IN_BOUNDS(x, a, b) x >= a && x <= b
+#define IN_BOUNDS(x, a, b) (((x) >= (a)) && ((x) <= (b)))
 
 #define WIDTH  400
 #define HEIGHT 300
@@ -13,11 +13,11 @@
 #define STATION_WIDTH  16
 
 #define AGENT_SPEED 50
-#define DEPOSIT 20
-#define DECAY 0.99
+#define DEPOSIT 6
+#define DECAY 0.97
 #define HEADING_SPEED 25
-#define SENSOR_OFFSET 10
-#define SENSOR_ANGLE  60
+#define SENSOR_OFFSET 15
+#define SENSOR_ANGLE  50
 
 #define RANDOMNESS 0.2
 

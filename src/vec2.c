@@ -49,7 +49,7 @@ Vec2 Vec2Norm(Vec2 a) {
 }
 
 Vec2 Vec2FromDeg(float deg) {
-    return (Vec2) { .x = cos(DEG2RAD(deg)), .y = sin(DEG2RAD(deg)) };
+    return (Vec2) { .x = cosf(DEG2RAD(deg)), .y = sinf(DEG2RAD(deg)) };
 }
 
 float DegNorm(float deg) {

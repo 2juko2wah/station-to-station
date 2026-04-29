@@ -21,7 +21,7 @@ static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
-    *appstate = &(State) { .dt = 0.001 };
+    *appstate = &(State) { .dt = 0.001f };
     
     SDL_SetAppMetadata("Slime Molds", "0.0", "com.jukowah.slime.molds");
 
