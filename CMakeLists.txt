@@ -9,7 +9,11 @@ project(station_to_station)
 add_compile_options(-O3)
 add_executable(station_to_station)
 
-target_sources(station_to_station PRIVATE src/main.c)
+target_sources(station_to_station PRIVATE 
+    src/main.c
+    src/vec2.c
+    src/agent.c
+) 
 target_compile_features(station_to_station PUBLIC c_std_99)
 target_include_directories(station_to_station PRIVATE inc)
 
