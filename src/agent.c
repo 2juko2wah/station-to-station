@@ -14,44 +14,43 @@ void InitAgent(Agent *agent) {
     agent->position = Vec2New(WIDTH / 2.0f, HEIGHT / 2.0f);
 }
 
-void UpdateAgent(Agent *agent, Field *field, float dt) {
-    Vec2 front       = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading)), SENSOR_OFFSET));
-    Vec2 front_left  = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading - SENSOR_ANGLE)), SENSOR_OFFSET));
-    Vec2 front_right = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading + SENSOR_ANGLE)), SENSOR_OFFSET));
+float SampleTrail(Field *field, Vec2 at) {
+    int x = (int)at.x;
+    int y = (int)at.y;
 
-    if (agent->position.y < 0.0f) {
-        agent->position.y = 0.0f;
-        agent->heading = DegNorm(360.0f - agent->heading);
-    } else if (agent->position.y >= HEIGHT) {
-        agent->position.y = HEIGHT - 1.0f;
-        agent->heading = DegNorm(360.0f - agent->heading);
-    }
-    if (agent->position.x < 0.0f) {
-        agent->position.x = 0.0f;
-        agent->heading = DegNorm(180.0f - agent->heading);
-    } else if (agent->position.x >= WIDTH) {
-        agent->position.x = (float)WIDTH - 1.0f;
-        agent->heading = DegNorm(180.0f - agent->heading);
-        
-    }
-
-    float left = 0.0f;
-    float forward = 0.0f;
-    float right = 0.0f;
-    
-    if (front_left.x < WIDTH  && front_left.x >= 0.0f && front_left.y < HEIGHT && front_left.y >= 0.0f) {
-        left = field->trail[(int)front_left.x][(int)front_left.y];
+    if (x >= WIDTH || x < 0.0f || y >= HEIGHT || y < 0.0f) {
+        return 0.0f;
     } 
-    if (front.x < WIDTH  && front.x >= 0.0f && front.y < HEIGHT && front.y >= 0.0f) {
-        forward = field->trail[(int)front.x][(int)front.y];
-    }
-    if ((front_right.x < WIDTH  && front_right.x >= 0.0f && front_right.y < HEIGHT && front_right.y >= 0.0f)) {
-        right = field->trail[(int)front_right.x][(int)front_right.y];
+    
+    return field->trail[x][y];
+}
+
+void ReflectOnBounds(Agent *agent) {
+    if (agent->position.y < 0.0f || agent->position.y >= HEIGHT) {
+        agent->position.y = SDL_clamp(agent->position.y, 0, HEIGHT-1);
+        agent->heading = DegNorm(360.0f - agent->heading);
     }
 
-    if (left > forward && left > right) {
+    if (agent->position.x < 0.0f || agent->position.x >= WIDTH) {
+        agent->position.x = SDL_clamp(agent->position.x, 0, WIDTH-1);
+        agent->heading = DegNorm(180.0f - agent->heading);
+    }
+}
+
+void UpdateAgent(Agent *agent, Field *field, float dt) {
+    ReflectOnBounds(agent);
+    
+    Vec2 fwd = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading)), SENSOR_OFFSET));
+    Vec2 lft = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading - SENSOR_ANGLE)), SENSOR_OFFSET));
+    Vec2 rgt = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading + SENSOR_ANGLE)), SENSOR_OFFSET));
+
+    float sfwd = SampleTrail(field, fwd);
+    float slft = SampleTrail(field, lft);
+    float srgt = SampleTrail(field, rgt);
+
+    if (slft > sfwd && slft > srgt) {
         agent->heading -= HEADING_SPEED;
-    } else if (right > forward && right > left) {
+    } else if (srgt > sfwd && srgt > slft) {
         agent->heading += HEADING_SPEED;
     } else {
         agent->heading += (2.0f * (SDL_randf() - 0.5f)) * RANDOMNESS;

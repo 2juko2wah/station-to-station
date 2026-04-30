@@ -21,7 +21,7 @@ typedef struct {
 
 // [TODO]: Really I just gotta get rid of this
 typedef struct {
-    int16_t trail[WIDTH][HEIGHT];
+    int16_t trail[WIDTH][HEIGHT]; // this will eventually get its own static/global scope
 
     uint8_t num_stimuli;
     uint8_t cap_stimuli;
