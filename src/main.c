@@ -129,23 +129,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             pbuffer[(int)p.y][(int)p.x][3] = 255;
         }
     }
-    
-    for (int agent = 0; agent < field.num_stimuli; ++agent) {
-        Vec2 pos = field.stimuli[agent].position;
-        scalar str = field.stimuli[agent].strength;
-
-        for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
-            for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
-                if (pos.x + dx >= 0 && pos.x + dx < WIDTH && pos.y + dy >= 0 && pos.y + dy < HEIGHT) {
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][0] = 255;
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][1] = 0;
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][2] = (str > 0) * 255;
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][3] = (str < 0) * 255;
-                }
-            }
-        }
-
-    }
 
     for (int y = 0; y < HEIGHT; ++y) {
         for (int x = 0; x < WIDTH; ++x) {
@@ -165,6 +148,22 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         }
     }
 
+    for (int agent = 0; agent < field.num_stimuli; ++agent) {
+        Vec2 pos = field.stimuli[agent].position;
+        scalar str = field.stimuli[agent].strength;
+
+        for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
+            for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
+                if (pos.x + dx >= 0 && pos.x + dx < WIDTH && pos.y + dy >= 0 && pos.y + dy < HEIGHT) {
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][0] = 255;
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][1] = 0;
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][2] = (str > 0) * 255;
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][3] = (str < 0) * 255;
+                }
+            }
+        }
+
+    }
 
     SDL_UpdateTexture(trail_texture, NULL, pbuffer, WIDTH*4);
     SDL_RenderTexture(renderer,trail_texture, NULL, NULL);
