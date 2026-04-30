@@ -35,13 +35,27 @@ void UpdateAgent(Agent *agent, Field *field, float dt) {
         
     }
 
-    float left    = field->trail[(int)front_left.x][(int)front_left.y]   * (front_left.x < WIDTH  && front_left.x >= 0.0f && front_left.y < HEIGHT && front_left.y >= 0.0f);
-    float forward = field->trail[(int)front.x][(int)front.y]             * (front.x < WIDTH  && front.x >= 0.0f && front.y < HEIGHT && front.y >= 0.0f);
-    float right   = field->trail[(int)front_right.x][(int)front_right.y] * (front_right.x < WIDTH  && front_right.x >= 0.0f && front_right.y < HEIGHT && front_right.y >= 0.0f);
+    float left = 0.0f;
+    float forward = 0.0f;
+    float right = 0.0f;
     
-    agent->heading -= HEADING_SPEED * (left > forward && left > right);
-    agent->heading += HEADING_SPEED * (right > forward && right > left);
-    agent->heading += (2.0f * (SDL_randf() - 0.5f)) * RANDOMNESS * (!(left > forward && left > right) + !(right > forward && right > left));
+    if (front_left.x < WIDTH  && front_left.x >= 0.0f && front_left.y < HEIGHT && front_left.y >= 0.0f) {
+        left = field->trail[(int)front_left.x][(int)front_left.y];
+    } 
+    if (front.x < WIDTH  && front.x >= 0.0f && front.y < HEIGHT && front.y >= 0.0f) {
+        forward = field->trail[(int)front.x][(int)front.y];
+    }
+    if ((front_right.x < WIDTH  && front_right.x >= 0.0f && front_right.y < HEIGHT && front_right.y >= 0.0f)) {
+        right = field->trail[(int)front_right.x][(int)front_right.y];
+    }
+
+    if (left > forward && left > right) {
+        agent->heading -= HEADING_SPEED;
+    } else if (right > forward && right > left) {
+        agent->heading += HEADING_SPEED;
+    } else {
+        agent->heading += (2.0f * (SDL_randf() - 0.5f)) * RANDOMNESS;
+    }
 
     field->trail[(int)agent->position.x][(int)agent->position.y] = DEPOSIT;
     agent->position = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading), AGENT_SPEED * dt));
