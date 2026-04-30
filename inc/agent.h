@@ -6,23 +6,27 @@
 #include "vec2.h"
 #include "defns.h"
 
+// [-255, 255]
+typedef int16_t scalar;
+
 typedef struct {
     Vec2 position;
     float heading;
 } Agent;
 
 typedef struct {
+    Vec2 position;
+    scalar strength;
+} Stimulus;
+
+// [TODO]: Really I just gotta get rid of this
+typedef struct {
     int16_t trail[WIDTH][HEIGHT];
 
-    uint8_t num_attractors;
-    uint8_t cap_attractors;
+    uint8_t num_stimuli;
+    uint8_t cap_stimuli;
 
-    uint8_t num_deflectors;
-    uint8_t cap_deflectors;
-
-
-    Vec2 *attractors;
-    Vec2 *deflectors;
+    Stimulus *stimuli;
     Agent *agents;
 } Field;
 
@@ -32,17 +36,9 @@ void UpdateAgent(Agent *agent, Field *field, float dt);
 void InitField(Field *field);
 void UpdateField(Field *field, float dt);
 
-void PlaceAttractor(Field *field, uint64_t x, uint64_t y);
-void RemoveAttractor(Field *field, uint64_t x, uint64_t y);
+void PlaceStimulus(Field *field, Vec2 pos, int16_t strength);
+void RemoveStimulus(Field *field, Vec2 pos);
 
-
-void UpdateAttractors(Field *field, float dt);
-
-
-void PlaceDeflector(Field *field, uint64_t x, uint64_t y);
-void RemoveDeflector(Field *field, uint64_t x, uint64_t y);
-
-
-void UpdateDeflectors(Field *field, float dt);
+void UpdateStimuli(Field *field, float dt);
 
 #endif

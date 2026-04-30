@@ -68,15 +68,11 @@ void InitField(Field *field) {
         }
     }
 
-    field->num_attractors = 0;
-    field->cap_attractors = STATION_CAPACITY;
+    field->num_stimuli = 0;
+    field->cap_stimuli = STATION_CAPACITY;
 
-    field->num_deflectors = 0;
-    field->cap_deflectors = STATION_CAPACITY;
-
-    field->agents     = SDL_malloc(sizeof(Agent) * AGENT_CAPACITY);
-    field->attractors = SDL_malloc(sizeof(Vec2) * STATION_CAPACITY);
-    field->deflectors = SDL_malloc(sizeof(Vec2) * STATION_CAPACITY);
+    field->agents  = SDL_malloc(sizeof(Agent) * AGENT_CAPACITY);
+    field->stimuli = SDL_malloc(sizeof(Stimulus) * STATION_CAPACITY);
 }
 
 void UpdateField(Field *field, float dt) {
@@ -88,10 +84,7 @@ void UpdateField(Field *field, float dt) {
         for (int x = 0; x < WIDTH; ++x) {
             uint8_t num_edges = 4;
 
-            if (x+1 >= WIDTH) num_edges--;
-            else if (x-1 < 0) num_edges--;
-            if (y+1 >= HEIGHT) num_edges--;
-            else if (y-1 < 0) num_edges--;
+            num_edges -= (x+1 >= WIDTH) + (x-1 < 0) + (y+1 >= HEIGHT) + (y-1 < 0);
 
             buffer[x][y] = SDL_clamp(buffer[x][y], 0, 255);
             buffer[x][y] = (buffer[x][y-1]*(y-1 >= 0) + buffer[x-1][y]*(x-1 >= 0) + buffer[x][y] + buffer[x+1][y]*(x+1 < WIDTH) + buffer[x][y+1]*(y+1 < HEIGHT)) / (num_edges + 1);
@@ -104,87 +97,47 @@ void UpdateField(Field *field, float dt) {
 }
 
 
-void PlaceAttractor(Field *field, uint64_t x, uint64_t y) {
-    if (field->num_attractors > field->cap_attractors) {
-        field->cap_attractors *= 2;
-        field->attractors = realloc(field->attractors, sizeof(Vec2) * field->cap_attractors);
+void PlaceStimulus(Field *field, Vec2 pos, int16_t strength) {
+    if (field->num_stimuli >= field->cap_stimuli) {
+        field->cap_stimuli *= 2;
+        field->stimuli = realloc(field->stimuli, sizeof(Stimulus) * field->cap_stimuli);
 
-        if (!field->attractors) {
+        if (!field->stimuli) {
             printf("[ERROR]: Array resize failed\n");
             exit(1);
         }
     }
 
-    for (int i = 0; i < field->num_attractors; ++i) {
-        if (IN_BOUNDS(x, field->attractors[i].x - STATION_WIDTH, field->attractors[i].x + STATION_WIDTH) && IN_BOUNDS(y, field->attractors[i].y - STATION_HEIGHT, field->attractors[i].y + STATION_HEIGHT)) { 
+    for (int i = 0; i < field->num_stimuli; ++i) {
+        if (IN_BOUNDS(pos.x, field->stimuli[i].position.x - STATION_WIDTH, field->stimuli[i].position.x + STATION_WIDTH) && IN_BOUNDS(pos.y, field->stimuli[i].position.y - STATION_HEIGHT, field->stimuli[i].position.y + STATION_HEIGHT)) { 
             printf("[Warning]: \"Station to close to Station %d\" \n", i);
             return; 
         }
     }
 
-    field->attractors[field->num_attractors++] = (Vec2) { .x = x, .y = y };
+    field->stimuli[field->num_stimuli].position = pos;
+    field->stimuli[field->num_stimuli].strength = strength;
+
+    field->num_stimuli++;
 }
 
-void RemoveAttractor(Field *field, uint64_t x, uint64_t y) {
-    for (int i = 0; i < field->num_attractors; ++i) {
-        if (IN_BOUNDS(x, field->attractors[i].x - STATION_WIDTH / 2, field->attractors[i].x + STATION_WIDTH / 2) && IN_BOUNDS(y, field->attractors[i].y - STATION_HEIGHT / 2, field->attractors[i].y + STATION_HEIGHT / 2)) { 
-            field->attractors[i] = field->attractors[--field->num_attractors];
+void RemoveStimulus(Field *field, Vec2 pos) {
+    for (int i = 0; i < field->num_stimuli; ++i) {
+        if (IN_BOUNDS(pos.x, field->stimuli[i].position.x - STATION_WIDTH / 2, field->stimuli[i].position.x + STATION_WIDTH / 2) && IN_BOUNDS(pos.y, field->stimuli[i].position.y - STATION_HEIGHT / 2, field->stimuli[i].position.y + STATION_HEIGHT / 2)) { 
+            field->stimuli[i] = field->stimuli[--field->num_stimuli];
             
         }
     }
 }
 
-void UpdateAttractors(Field *field, float dt) {
-    for (int i = 0; i < field->num_attractors; ++i) {
-        Vec2 pos = field->attractors[i];
+void UpdateStimuli(Field *field, float dt) {
+    for (int i = 0; i < field->num_stimuli; ++i) {
+        Vec2 pos = field->stimuli[i].position;
         for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
             for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
                 if (pos.x + dx >= WIDTH || pos.x + dx < 0) continue;
                 if (pos.y + dy >= HEIGHT || pos.y + dy < 0) continue;
-                field->trail[(int)(pos.x + dx)][(int)(pos.y + dy)] = 255;
-            }
-        }
-    }
-}
-
-void PlaceDeflector(Field *field, uint64_t x, uint64_t y) {
-    if (field->num_deflectors > field->cap_deflectors) {
-        field->cap_deflectors *= 2;
-        field->deflectors = realloc(field->deflectors, sizeof(Vec2) * field->cap_deflectors);
-
-        if (!field->deflectors) {
-            printf("[ERROR]: Array resize failed\n");
-            exit(1);
-        }
-    }
-
-    for (int i = 0; i < field->num_deflectors; ++i) {
-        if (IN_BOUNDS(x, field->deflectors[i].x - STATION_WIDTH, field->deflectors[i].x + STATION_WIDTH) && IN_BOUNDS(y, field->deflectors[i].y - STATION_HEIGHT, field->deflectors[i].y + STATION_HEIGHT)) { 
-            printf("[Warning]: \"Station to close to Station %d\" \n", i);
-            return; 
-        }
-    }
-
-    field->deflectors[field->num_deflectors++] = (Vec2) { .x = x, .y = y };
-}
-
-void RemoveDeflector(Field *field, uint64_t x, uint64_t y) {
-    for (int i = 0; i < field->num_deflectors; ++i) {
-        if (IN_BOUNDS(x, field->deflectors[i].x - STATION_WIDTH / 2, field->deflectors[i].x + STATION_WIDTH / 2) && IN_BOUNDS(y, field->deflectors[i].y - STATION_HEIGHT / 2, field->deflectors[i].y + STATION_HEIGHT / 2)) { 
-            field->deflectors[i] = field->deflectors[--field->num_deflectors];
-            
-        }
-    }
-}
-
-void UpdateDeflectors(Field *field, float dt) {
-    for (int i = 0; i < field->num_deflectors; ++i) {
-        Vec2 pos = field->deflectors[i];
-        for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
-            for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
-                if (pos.x + dx >= WIDTH || pos.x + dx < 0) continue;
-                if (pos.y + dy >= HEIGHT || pos.y + dy < 0) continue;
-                field->trail[(int)(pos.x + dx)][(int)(pos.y + dy)] = -255;
+                field->trail[(int)(pos.x + dx)][(int)(pos.y + dy)] = field->stimuli[i].strength;
             }
         }
     }

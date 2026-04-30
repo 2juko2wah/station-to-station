@@ -63,14 +63,14 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         
         switch (mouse->button) {
             case SDL_BUTTON_LEFT:
-                PlaceAttractor(&field, (int)logical_x, (int)logical_y);
+                PlaceStimulus(&field, Vec2New((int)logical_x, (int)logical_y), 255);
                 break;
             case SDL_BUTTON_MIDDLE:
-                RemoveAttractor(&field, (int)logical_x, (int)logical_y);
-                RemoveDeflector(&field, (int)logical_x, (int)logical_y);
+                RemoveStimulus(&field, Vec2New((int)logical_x, (int)logical_y));
+                RemoveStimulus(&field, Vec2New((int)logical_x, (int)logical_y));
                 break;
             case SDL_BUTTON_RIGHT:
-                PlaceDeflector(&field, (int)logical_x, (int)logical_y);
+                PlaceStimulus(&field, Vec2New((int)logical_x, (int)logical_y), -255);
                 break;
         }
     }
@@ -100,8 +100,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     }
 
     UpdateField(&field, state->dt);
-    UpdateAttractors(&field, state->dt);
-    UpdateDeflectors(&field, state->dt);
+    UpdateStimuli(&field, state->dt);
     
     for (int i = 0; i < AGENT_CAPACITY; ++i) {
         UpdateAgent(&(field.agents[i]), &field, state->dt);
@@ -112,13 +111,13 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     
     for (int y = 0; y < HEIGHT; ++y) {
         for (int x = 0; x < WIDTH; ++x) {
-            uint8_t v = field.trail[x][y];
             pbuffer[y][x][0] = 255;
-            pbuffer[y][x][1] = v;
-            pbuffer[y][x][2] = v;
-            pbuffer[y][x][3] = v;
+            pbuffer[y][x][1] = 0;
+            pbuffer[y][x][2] = 0;
+            pbuffer[y][x][3] = 0;
         }
     }
+
 
     for (int agent = 0; agent < AGENT_CAPACITY; ++agent) {
         Vec2 p = field.agents[agent].position;
@@ -131,22 +130,23 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         }
     }
     
-    for (int agent = 0; agent < field.num_attractors; ++agent) {
-        Vec2 pos = field.attractors[agent];
+    for (int agent = 0; agent < field.num_stimuli; ++agent) {
+        Vec2 pos = field.stimuli[agent].position;
+        scalar str = field.stimuli[agent].strength;
 
         for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
             for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
                 if (pos.x + dx >= 0 && pos.x + dx < WIDTH && pos.y + dy >= 0 && pos.y + dy < HEIGHT) {
                     pbuffer[(int)pos.y+dy][(int)pos.x+dx][0] = 255;
                     pbuffer[(int)pos.y+dy][(int)pos.x+dx][1] = 0;
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][2] = 255;
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][3] = 0;
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][2] = (str > 0) * 255;
+                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][3] = (str < 0) * 255;
                 }
             }
         }
 
     }
-    
+
     SDL_UpdateTexture(trail_texture, NULL, pbuffer, WIDTH*4);
     SDL_RenderTexture(renderer,trail_texture, NULL, NULL);
     SDL_RenderPresent(renderer);
