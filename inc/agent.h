@@ -36,7 +36,7 @@ void UpdateAgent(Agent *agent, Field *field, float dt);
 void InitField(Field *field);
 void UpdateField(Field *field, float dt);
 
-void PlaceStimulus(Field *field, Vec2 pos, int16_t strength);
+int PlaceStimulus(Field *field, Vec2 pos, int16_t strength);
 void RemoveStimulus(Field *field, Vec2 pos);
 
 void UpdateStimuli(Field *field, float dt);

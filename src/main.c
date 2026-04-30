@@ -147,6 +147,25 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
     }
 
+    for (int y = 0; y < HEIGHT; ++y) {
+        for (int x = 0; x < WIDTH; ++x) {
+            uint8_t num_edges = 4;
+
+            num_edges -= (x+1 >= WIDTH) + (x-1 < 0) + (y+1 >= HEIGHT) + (y-1 < 0);
+
+            pbuffer[y][x][0] = (int)((pbuffer[y][x][0] + pbuffer[y][x+1][0] * (x + 1 < WIDTH) + pbuffer[y+1][x][0] * (y + 1 < HEIGHT) + pbuffer[y][x-1][0] * (x-1 >= 0) + pbuffer[y-1][x][0] *(y-1 >= 0)) / (num_edges + 1));
+            pbuffer[y][x][1] = (int)((pbuffer[y][x][1] + pbuffer[y][x+1][1] * (x + 1 < WIDTH) + pbuffer[y+1][x][1] * (y + 1 < HEIGHT) + pbuffer[y][x-1][1] * (x-1 >= 0) + pbuffer[y-1][x][1] *(y-1 >= 0)) / (num_edges + 1));
+            pbuffer[y][x][2] = (int)((pbuffer[y][x][2] + pbuffer[y][x+1][2] * (x + 1 < WIDTH) + pbuffer[y+1][x][2] * (y + 1 < HEIGHT) + pbuffer[y][x-1][2] * (x-1 >= 0) + pbuffer[y-1][x][2] *(y-1 >= 0)) / (num_edges + 1));
+            pbuffer[y][x][3] = (int)((pbuffer[y][x][3] + pbuffer[y][x+1][3] * (x + 1 < WIDTH) + pbuffer[y+1][x][3] * (y + 1 < HEIGHT) + pbuffer[y][x-1][3] * (x-1 >= 0) + pbuffer[y-1][x][3] *(y-1 >= 0)) / (num_edges + 1));
+
+            pbuffer[y][x][0] = SDL_clamp(pbuffer[y][x][0] * pbuffer[y][x][0] / 100, 0, 255);
+            pbuffer[y][x][1] = SDL_clamp(pbuffer[y][x][1] * pbuffer[y][x][1] / 100, 0, 255);
+            pbuffer[y][x][2] = SDL_clamp(pbuffer[y][x][2] * pbuffer[y][x][2] / 100, 0, 255);
+            pbuffer[y][x][3] = SDL_clamp(pbuffer[y][x][3] * pbuffer[y][x][3] / 100, 0, 255);
+        }
+    }
+
+
     SDL_UpdateTexture(trail_texture, NULL, pbuffer, WIDTH*4);
     SDL_RenderTexture(renderer,trail_texture, NULL, NULL);
     SDL_RenderPresent(renderer);

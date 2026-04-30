@@ -86,7 +86,7 @@ void UpdateField(Field *field, float dt) {
             num_edges -= (x+1 >= WIDTH) + (x-1 < 0) + (y+1 >= HEIGHT) + (y-1 < 0);
 
             buffer[x][y] = SDL_clamp(buffer[x][y], 0, 255);
-            buffer[x][y] = (buffer[x][y-1]*(y-1 >= 0) + buffer[x-1][y]*(x-1 >= 0) + buffer[x][y] + buffer[x+1][y]*(x+1 < WIDTH) + buffer[x][y+1]*(y+1 < HEIGHT)) / (num_edges + 1);
+            buffer[x][y] = (field->trail[x][y-1]*(y-1 >= 0) + field->trail[x-1][y]*(x-1 >= 0) + field->trail[x][y] + field->trail[x+1][y]*(x+1 < WIDTH) + field->trail[x][y+1]*(y+1 < HEIGHT)) / (num_edges + 1);
 
             buffer[x][y] *= DECAY;
         }
@@ -95,11 +95,11 @@ void UpdateField(Field *field, float dt) {
     SDL_memcpy(field->trail, buffer, (sizeof(buffer)));
 }
 
-
-void PlaceStimulus(Field *field, Vec2 pos, int16_t strength) {
+// these could use the UpdateAgent treatment from before
+int PlaceStimulus(Field *field, Vec2 pos, int16_t strength) {
     if (field->num_stimuli >= field->cap_stimuli) {
         field->cap_stimuli *= 2;
-        field->stimuli = realloc(field->stimuli, sizeof(Stimulus) * field->cap_stimuli);
+        field->stimuli = SDL_realloc(field->stimuli, sizeof(Stimulus) * field->cap_stimuli);
 
         if (!field->stimuli) {
             printf("[ERROR]: Array resize failed\n");
@@ -109,8 +109,7 @@ void PlaceStimulus(Field *field, Vec2 pos, int16_t strength) {
 
     for (int i = 0; i < field->num_stimuli; ++i) {
         if (IN_BOUNDS(pos.x, field->stimuli[i].position.x - STATION_WIDTH, field->stimuli[i].position.x + STATION_WIDTH) && IN_BOUNDS(pos.y, field->stimuli[i].position.y - STATION_HEIGHT, field->stimuli[i].position.y + STATION_HEIGHT)) { 
-            printf("[Warning]: \"Station to close to Station %d\" \n", i);
-            return; 
+            return 1;
         }
     }
 
@@ -136,6 +135,7 @@ void UpdateStimuli(Field *field, float dt) {
             for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
                 if (pos.x + dx >= WIDTH || pos.x + dx < 0) continue;
                 if (pos.y + dy >= HEIGHT || pos.y + dy < 0) continue;
+
                 field->trail[(int)(pos.x + dx)][(int)(pos.y + dy)] = field->stimuli[i].strength;
             }
         }
