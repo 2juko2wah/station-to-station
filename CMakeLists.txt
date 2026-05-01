@@ -14,13 +14,23 @@ add_executable(station_to_station)
 
 add_compile_options(-O3)
 target_sources(station_to_station PRIVATE 
-    src/main.c
-    src/vec2.c
-    src/agent.c
+    src/main.cpp
+    src/vec2.cpp
+    src/agent.cpp
+
+    imgui/imgui.cpp
+    imgui/imgui_widgets.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_demo.cpp
+    imgui/imgui_tables.cpp
+    imgui/backends/imgui_impl_sdl3.cpp
+    imgui/backends/imgui_impl_sdlrenderer3.cpp
 )
 
 target_include_directories(station_to_station PRIVATE inc ${CMAKE_SOURCE_DIR})
-
+target_include_directories(station_to_station PRIVATE inc ${CMAKE_SOURCE_DIR}/SDL)
+target_include_directories(station_to_station PRIVATE inc ${CMAKE_SOURCE_DIR}/imgui)
+target_include_directories(station_to_station PRIVATE inc ${CMAKE_SOURCE_DIR}/imgui/backends)
 
 target_link_libraries(station_to_station PRIVATE
     m

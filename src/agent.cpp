@@ -70,8 +70,8 @@ void InitField(Field *field) {
     field->num_stimuli = 0;
     field->cap_stimuli = STATION_CAPACITY;
 
-    field->agents  = SDL_malloc(sizeof(Agent) * AGENT_CAPACITY);
-    field->stimuli = SDL_malloc(sizeof(Stimulus) * STATION_CAPACITY);
+    field->agents  = (Agent *)SDL_malloc(sizeof(Agent) * AGENT_CAPACITY);
+    field->stimuli = (Stimulus *)SDL_malloc(sizeof(Stimulus) * STATION_CAPACITY);
 }
 
 void UpdateField(Field *field, float dt) {
@@ -99,7 +99,7 @@ void UpdateField(Field *field, float dt) {
 int PlaceStimulus(Field *field, Vec2 pos, int16_t strength) {
     if (field->num_stimuli >= field->cap_stimuli) {
         field->cap_stimuli *= 2;
-        field->stimuli = SDL_realloc(field->stimuli, sizeof(Stimulus) * field->cap_stimuli);
+        field->stimuli = (Stimulus *)SDL_realloc(field->stimuli, sizeof(Stimulus) * field->cap_stimuli);
 
         if (!field->stimuli) {
             printf("[ERROR]: Array resize failed\n");
@@ -117,6 +117,8 @@ int PlaceStimulus(Field *field, Vec2 pos, int16_t strength) {
     field->stimuli[field->num_stimuli].strength = strength;
 
     field->num_stimuli++;
+
+    return 0;
 }
 
 void RemoveStimulus(Field *field, Vec2 pos) {

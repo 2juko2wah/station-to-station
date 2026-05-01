@@ -3,9 +3,15 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+
+#include "imgui.h"
+
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_sdlrenderer3.h"
 
 #include "vec2.h"
 #include "defns.h"
@@ -13,6 +19,7 @@
 
 typedef struct {
     float dt;
+    ImGuiIO *io;
 } State;
 
 static Field field;
@@ -23,8 +30,16 @@ static SDL_Renderer *renderer = NULL;
 static SDL_Texture *trail_texture = NULL;
 static uint8_t pbuffer[HEIGHT][WIDTH][4];
 
+bool show_demo_window = true;
+bool show_another_window = false;
+ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
-    *appstate = &(State) { .dt = 0.001f };
+    State *state = (State *)SDL_malloc(sizeof(State));
+
+    state->dt = 0.001f;
+    *appstate = state;
     
     SDL_SetAppMetadata("Slime Molds", "0.0", "com.jukowah.slime.molds");
 
@@ -33,10 +48,32 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
+    float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+
     if (!SDL_CreateWindowAndRenderer("Slime Molds", WIDTH, HEIGHT, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
+        IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    state->io = &ImGui::GetIO();
+    state->io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    state->io->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsLight();
+
+    // Setup scaling
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
+    style.FontScaleDpi = main_scale;        // Set initial font scale. (in docking branch: using io.ConfigDpiScaleFonts=true automatically overrides this for every window depending on the current monitor)
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
+    ImGui_ImplSDLRenderer3_Init(renderer);
+
     trail_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
     SDL_SetRenderLogicalPresentation(renderer, WIDTH, HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
@@ -50,6 +87,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     State *state = (State *)appstate;
+
+    ImGui_ImplSDL3_ProcessEvent(event);
 
     if (event->type == SDL_EVENT_QUIT) {
         return SDL_APP_SUCCESS;
@@ -91,8 +130,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
     State *state = (State *)appstate;
-
-    
 
     static uint64_t last_time = 0;
     uint64_t now = SDL_GetTicks();
@@ -151,7 +188,24 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     }
 
     SDL_UpdateTexture(trail_texture, NULL, pbuffer, WIDTH*4);
+
+
+    ImGui_ImplSDLRenderer3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+    
+    if (show_demo_window) {
+        ImGui::ShowDemoWindow(&show_demo_window);
+    }
+    
+    ImGui::Render();
+    
+    SDL_SetRenderScale(renderer, state->io->DisplayFramebufferScale.x, state->io->DisplayFramebufferScale.y);
+    SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+    SDL_RenderClear(renderer);
+
     SDL_RenderTexture(renderer,trail_texture, NULL, NULL);
+    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
 
     SDL_RenderPresent(renderer);
 
@@ -162,5 +216,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
     SDL_DestroyTexture(trail_texture);
+    SDL_free(appstate);
+
     return;
 }
