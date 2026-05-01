@@ -3,225 +3,175 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-
-#include "imgui.h"
+#include "defns.h"
 
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_gpu.h>
 
-#include "imgui_impl_sdl3.h"
-#include "imgui_impl_sdlrenderer3.h"
+#define NUM_ELEMS 256
+#define WORKGROUP_SIZE 64
 
-#include "vec2.h"
-#include "defns.h"
-#include "agent.h"
+struct AppState {
+    SDL_Window   *window;
+    SDL_GPUDevice *device;
 
-typedef struct {
+    SDL_GPURenderPass *pass;
+
+    SDL_GPUComputePipeline *computeline;
+
+    SDL_GPUCommandBuffer *cmd;
+    SDL_GPUTexture *swap;
+
+    uint32_t swidth;
+    uint32_t sheight;
+
     float dt;
-    ImGuiIO *io;
-    float main_scale;
-} State;
+    bool running;
+};
 
-static Field field;
+static SDL_GPUComputePipeline *CreateComputePipelineFromShader(SDL_GPUDevice *device, const char *path, SDL_GPUComputePipelineCreateInfo *info) {
+    size_t size;
 
-static SDL_Window *window = NULL;
-static SDL_Renderer *renderer = NULL;
+    void *code = SDL_LoadFile(path, &size);
 
-static SDL_Texture *trail_texture = NULL;
-static uint8_t pbuffer[HEIGHT][WIDTH][4];
+    if (!code) {
+        SDL_Log("[ERROR/SDL3]: LoadFile failed: %s", SDL_GetError());
 
-bool show_demo_window = true;
-bool show_another_window = false;
-ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+        return NULL;
+    }
 
+    SDL_GPUComputePipelineCreateInfo copy = *info;
+    copy.code = (uint8_t *)code;
+    copy.code_size = size;
+    copy.entrypoint = "main";
+    copy.format = SDL_GPU_SHADERFORMAT_SPIRV;
+
+	SDL_GPUComputePipeline* pipeline = SDL_CreateGPUComputePipeline(device, &copy);
+	if (!pipeline) {
+		SDL_Log("[ERROR/SDL3]: CreateGPUComputePipeline: %f", SDL_GetError());
+		SDL_free(code);
+		return NULL;
+	}
+    
+    SDL_free(code);
+
+    return pipeline;
+}
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
-    State *state = (State *)SDL_malloc(sizeof(State));
+    AppState *state = (AppState *)SDL_malloc(sizeof(AppState));
 
-    state->dt = 0.001f;
-    *appstate = state;
-    
     SDL_SetAppMetadata("Slime Molds", "0.0", "com.jukowah.slime.molds");
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
-        SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
+        SDL_Log("[ERROR/SDL3]: SDL_Init failed: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
-    state->main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+    state->window = SDL_CreateWindow("Slime Molds", WIDTH, HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    if (!state->window) {
+        SDL_Log("[ERROR/SDL3]: CreateWindow failed: %s", SDL_GetError());
+        
+        SDL_free(state);
 
-    if (!SDL_CreateWindowAndRenderer("Slime Molds", WIDTH*state->main_scale, HEIGHT*state->main_scale, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window, &renderer)) {
-        SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
-        IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    state->io = &ImGui::GetIO();
-    state->io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    state->io->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    state->device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, true, NULL);
 
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
-
-    // Setup scaling
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(state->main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
-    style.FontScaleDpi = state->main_scale;        // Set initial font scale. (in docking branch: using io.ConfigDpiScaleFonts=true automatically overrides this for every window depending on the current monitor)
-
-    // Setup Platform/Renderer backends
-    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer3_Init(renderer);
-
-    trail_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
-    SDL_SetRenderLogicalPresentation(renderer, WIDTH*state->main_scale, HEIGHT*state->main_scale, SDL_LOGICAL_PRESENTATION_DISABLED);
-
-    InitField(&field);
-    for (int i = 0; i < AGENT_CAPACITY; ++i) {
-        InitAgent(&(field.agents[i]));
+    if (!state->device) {
+        SDL_Log("[ERROR/SDL3]: CreateGPUDevice failed: %s", SDL_GetError());
+        
+        SDL_AppQuit(state, SDL_APP_FAILURE);
     }
+
+    if (!SDL_ClaimWindowForGPUDevice(state->device, state->window)) {
+        SDL_Log("[ERROR/SDL3]: ClaimWindowForGPUDevice failed: %s", SDL_GetError());
+
+        SDL_AppQuit(state, SDL_APP_FAILURE);
+    }
+    SDL_RaiseWindow(state->window);
+
+    SDL_GPUComputePipelineCreateInfo info;
+    info.num_readonly_storage_textures = 1;
+    info.num_readonly_storage_buffers = 1;
+    info.num_uniform_buffers = 1;
+
+    info.threadcount_x = WORKGROUP_SIZE;
+    info.threadcount_y = 1;
+    info.threadcount_z = 1;
+    
+    state->computeline = CreateComputePipelineFromShader(state->device, "test.spv", &info);
+
+    state->running = true;
+
+    *appstate = (void *)state;
 
     return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
-    State *state = (State *)appstate;
-
-
-
-    ImGui_ImplSDL3_ProcessEvent(event);
-
+    AppState *state = (AppState *)appstate;
 
     if (event->type == SDL_EVENT_QUIT) {
         return SDL_APP_SUCCESS;
     }
 
-    if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-        SDL_MouseButtonEvent *mouse = (SDL_MouseButtonEvent *)event;
-            
-        float logical_x, logical_y;
-        SDL_RenderCoordinatesFromWindow(renderer, mouse->x, mouse->y, &logical_x, &logical_y);
-        
-        switch (mouse->button) {
-            case SDL_BUTTON_LEFT:
-                PlaceStimulus(&field, Vec2((int)logical_x, (int)logical_y), 255);
-                break;
-            case SDL_BUTTON_MIDDLE:
-                RemoveStimulus(&field, Vec2((int)logical_x, (int)logical_y));
-                RemoveStimulus(&field, Vec2((int)logical_x, (int)logical_y));
-                break;
-            case SDL_BUTTON_RIGHT:
-                PlaceStimulus(&field, Vec2((int)logical_x, (int)logical_y), -255);
-                break;
-        }
-    }
-
-    if (event->type == SDL_EVENT_KEY_DOWN) {
-        SDL_KeyboardEvent *keyboard = (SDL_KeyboardEvent *)event;
-        switch (keyboard->key) {
-            case SDLK_R:
-                for (int i = 0; i < AGENT_CAPACITY; ++i) {
-                   InitAgent(&(field.agents[i]));
-                }
-                break;
-        }
-    }
-
-
     return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
-    State *state = (State *)appstate;
+    AppState *state = (AppState *)appstate;
 
-    static uint64_t last_time = 0;
-    uint64_t now = SDL_GetTicks();
-    
-    if (last_time != 0) {
-        state->dt = (now - last_time) / 1000.0f;
+    uint64_t last_time = 0;
+    uint64_t curr_time = SDL_GetTicks();
+    if (last_time != 0) state->dt = (curr_time - last_time) / 1000.0f;
+
+    state->cmd = SDL_AcquireGPUCommandBuffer(state->device);
+    if (!state->cmd) {
+        SDL_Log("[ERROR/SDL3]: AcquireGPUCommandBuffer failed: %s", SDL_GetError());
+
+        SDL_AppQuit(state, SDL_APP_FAILURE);
     }
 
-    UpdateField(&field, state->dt);
-    UpdateStimuli(&field, state->dt);
-    
-    for (int i = 0; i < AGENT_CAPACITY; ++i) {
-        UpdateAgent(&(field.agents[i]), &field, state->dt);
+    SDL_WaitAndAcquireGPUSwapchainTexture(state->cmd, state->window, &state->swap, &state->swidth, &state->sheight);
+
+    if (!state->swap) {
+        SDL_Log("[ERROR/SDL3]: WaitAndAcquireGPUSwapchainTexture failed: %s", SDL_GetError());
+
+        SDL_AppQuit(state, SDL_APP_FAILURE);
     }
 
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-    
-    for (int y = 0; y < HEIGHT; ++y) {
-        for (int x = 0; x < WIDTH; ++x) {
-            pbuffer[y][x][0] = 255;
-            pbuffer[y][x][1] = 0;
-            pbuffer[y][x][2] = 0;
-            pbuffer[y][x][3] = 0;
-        }
+    SDL_GPUColorTargetInfo target = {0};
+    target.texture = state->swap;
+    target.clear_color = (SDL_FColor) { 0.3f, 0.3f, 0.3f, 1.0f };
+    target.load_op = SDL_GPU_LOADOP_CLEAR;
+    target.store_op = SDL_GPU_STOREOP_STORE;
+
+    state->pass = SDL_BeginGPURenderPass(state->cmd, &target, 1, NULL);
+
+    SDL_EndGPURenderPass(state->pass);
+
+    if (!SDL_SubmitGPUCommandBuffer(state->cmd)) {
+        SDL_Log("[ERROR/SDL3]: SubmitGPUCommandBuffer failed: %s", SDL_GetError());
+
+        SDL_AppQuit(state, SDL_APP_FAILURE);
     }
 
-
-    for (int agent = 0; agent < AGENT_CAPACITY; ++agent) {
-        Vec2 p = field.agents[agent].position;
-
-        if (p.x >= 0 && p.x < WIDTH && p.y >= 0 && p.y < HEIGHT) {
-            pbuffer[(int)p.y][(int)p.x][0] = 255;
-            pbuffer[(int)p.y][(int)p.x][1] = 255;
-            pbuffer[(int)p.y][(int)p.x][2] = 255;
-            pbuffer[(int)p.y][(int)p.x][3] = 255;
-        }
-    }
-
-
-    for (int agent = 0; agent < field.num_stimuli; ++agent) {
-        Vec2 pos = field.stimuli[agent].position;
-        scalar str = field.stimuli[agent].strength;
-
-        for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
-            for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
-                if (pos.x + dx >= 0 && pos.x + dx < WIDTH && pos.y + dy >= 0 && pos.y + dy < HEIGHT) {
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][0] = 255;
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][1] = 0;
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][2] = (str > 0) * 255;
-                    pbuffer[(int)pos.y+dy][(int)pos.x+dx][3] = (str < 0) * 255;
-                }
-            }
-        }
-
-    }
-
-    SDL_UpdateTexture(trail_texture, NULL, pbuffer, WIDTH*4);
-
-
-    ImGui_ImplSDLRenderer3_NewFrame();
-    ImGui_ImplSDL3_NewFrame();
-    ImGui::NewFrame();
-    
-    if (show_demo_window) {
-        ImGui::ShowDemoWindow(&show_demo_window);
-    }
-    
-    ImGui::Render();
-    
-    //SDL_SetRenderScale(renderer, state->io->DisplayFramebufferScale.x, state->io->DisplayFramebufferScale.y);
-    
-    SDL_RenderClear(renderer);
-
-    SDL_RenderTexture(renderer,trail_texture, NULL, NULL);
-    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-
-    SDL_RenderPresent(renderer);
-
-    last_time = now;
+    last_time = curr_time;
     
     return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
-    SDL_DestroyTexture(trail_texture);
-    SDL_free(appstate);
+    AppState *state = (AppState *)appstate;
 
+    if (state->window && state->device) SDL_ReleaseWindowFromGPUDevice(state->device, state->window);
+    if (state->window) SDL_DestroyWindow(state->window);
+    if (state->device) SDL_DestroyGPUDevice(state->device);
+
+    SDL_free(state);
     return;
 }
