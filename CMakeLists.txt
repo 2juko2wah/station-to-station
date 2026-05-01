@@ -12,9 +12,8 @@ project(station_to_station LANGUAGES C CXX)
 
 add_executable(station_to_station)
 
-add_compile_options(-O3)
 target_sources(station_to_station PRIVATE 
-    src/main.cppp
+    src/main.c
 
     imgui/imgui.cpp
     imgui/imgui_widgets.cpp
@@ -24,6 +23,9 @@ target_sources(station_to_station PRIVATE
     imgui/backends/imgui_impl_sdl3.cpp
     imgui/backends/imgui_impl_sdlgpu3.cpp
 )
+
+target_compile_options(station_to_station PRIVATE -O3)
+target_compile_options(station_to_station PRIVATE -fpermissive)
 
 target_include_directories(station_to_station PRIVATE inc ${CMAKE_SOURCE_DIR})
 target_include_directories(station_to_station PRIVATE inc ${CMAKE_SOURCE_DIR}/SDL)
