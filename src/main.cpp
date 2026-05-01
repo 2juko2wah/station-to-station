@@ -20,6 +20,7 @@
 typedef struct {
     float dt;
     ImGuiIO *io;
+    float main_scale;
 } State;
 
 static Field field;
@@ -48,9 +49,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+    state->main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
 
-    if (!SDL_CreateWindowAndRenderer("Slime Molds", WIDTH, HEIGHT, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+    if (!SDL_CreateWindowAndRenderer("Slime Molds", WIDTH*state->main_scale, HEIGHT*state->main_scale, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window, &renderer)) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -67,15 +68,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
     // Setup scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
-    style.FontScaleDpi = main_scale;        // Set initial font scale. (in docking branch: using io.ConfigDpiScaleFonts=true automatically overrides this for every window depending on the current monitor)
+    style.ScaleAllSizes(state->main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
+    style.FontScaleDpi = state->main_scale;        // Set initial font scale. (in docking branch: using io.ConfigDpiScaleFonts=true automatically overrides this for every window depending on the current monitor)
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
     trail_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
-    SDL_SetRenderLogicalPresentation(renderer, WIDTH, HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    SDL_SetRenderLogicalPresentation(renderer, WIDTH*state->main_scale, HEIGHT*state->main_scale, SDL_LOGICAL_PRESENTATION_DISABLED);
 
     InitField(&field);
     for (int i = 0; i < AGENT_CAPACITY; ++i) {
@@ -88,7 +89,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     State *state = (State *)appstate;
 
+
+
     ImGui_ImplSDL3_ProcessEvent(event);
+
 
     if (event->type == SDL_EVENT_QUIT) {
         return SDL_APP_SUCCESS;
@@ -102,14 +106,14 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         
         switch (mouse->button) {
             case SDL_BUTTON_LEFT:
-                PlaceStimulus(&field, Vec2New((int)logical_x, (int)logical_y), 255);
+                PlaceStimulus(&field, Vec2((int)logical_x, (int)logical_y), 255);
                 break;
             case SDL_BUTTON_MIDDLE:
-                RemoveStimulus(&field, Vec2New((int)logical_x, (int)logical_y));
-                RemoveStimulus(&field, Vec2New((int)logical_x, (int)logical_y));
+                RemoveStimulus(&field, Vec2((int)logical_x, (int)logical_y));
+                RemoveStimulus(&field, Vec2((int)logical_x, (int)logical_y));
                 break;
             case SDL_BUTTON_RIGHT:
-                PlaceStimulus(&field, Vec2New((int)logical_x, (int)logical_y), -255);
+                PlaceStimulus(&field, Vec2((int)logical_x, (int)logical_y), -255);
                 break;
         }
     }
@@ -124,6 +128,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
                 break;
         }
     }
+
 
     return SDL_APP_CONTINUE;
 }
@@ -200,8 +205,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     
     ImGui::Render();
     
-    SDL_SetRenderScale(renderer, state->io->DisplayFramebufferScale.x, state->io->DisplayFramebufferScale.y);
-    SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+    //SDL_SetRenderScale(renderer, state->io->DisplayFramebufferScale.x, state->io->DisplayFramebufferScale.y);
+    
     SDL_RenderClear(renderer);
 
     SDL_RenderTexture(renderer,trail_texture, NULL, NULL);

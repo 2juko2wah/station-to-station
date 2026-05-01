@@ -3,8 +3,8 @@
 
 #define IN_BOUNDS(x, a, b) (((x) >= (a)) && ((x) <= (b)))
 
-#define WIDTH  400
-#define HEIGHT 300
+#define WIDTH  1920/4
+#define HEIGHT 1080/4
 
 #define AGENT_CAPACITY 50000
 #define STATION_CAPACITY 40

@@ -11,7 +11,7 @@
 
 void InitAgent(Agent *agent) {
     agent->heading  = SDL_randf() * 360.0f;
-    agent->position = Vec2New(WIDTH / 2.0f, HEIGHT / 2.0f);
+    agent->position = Vec2(WIDTH / 2.0f, HEIGHT / 2.0f);
 }
 
 float SampleTrail(Field *field, Vec2 at) {
@@ -28,21 +28,21 @@ float SampleTrail(Field *field, Vec2 at) {
 void ReflectOnBounds(Agent *agent) {
     if (agent->position.y < 0.0f || agent->position.y >= HEIGHT) {
         agent->position.y = SDL_clamp(agent->position.y, 0, HEIGHT-1);
-        agent->heading = DegNorm(360.0f - agent->heading);
+        agent->heading = NORMDEG(360.0f - agent->heading);
     }
 
     if (agent->position.x < 0.0f || agent->position.x >= WIDTH) {
         agent->position.x = SDL_clamp(agent->position.x, 0, WIDTH-1);
-        agent->heading = DegNorm(180.0f - agent->heading);
+        agent->heading = NORMDEG(180.0f - agent->heading);
     }
 }
 
 void UpdateAgent(Agent *agent, Field *field, float dt) {
     ReflectOnBounds(agent);
     
-    Vec2 fwd = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading)), SENSOR_OFFSET));
-    Vec2 lft = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading - SENSOR_ANGLE)), SENSOR_OFFSET));
-    Vec2 rgt = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(DegNorm(agent->heading + SENSOR_ANGLE)), SENSOR_OFFSET));
+    Vec2 fwd = agent->position + Vec2::fromDeg(agent->heading)                * SENSOR_OFFSET;
+    Vec2 lft = agent->position + Vec2::fromDeg(agent->heading - SENSOR_ANGLE) * SENSOR_OFFSET;
+    Vec2 rgt = agent->position + Vec2::fromDeg(agent->heading + SENSOR_ANGLE) * SENSOR_OFFSET;
 
     float sfwd = SampleTrail(field, fwd);
     float slft = SampleTrail(field, lft);
@@ -57,7 +57,8 @@ void UpdateAgent(Agent *agent, Field *field, float dt) {
     }
 
     field->trail[(int)agent->position.x][(int)agent->position.y] = DEPOSIT;
-    agent->position = Vec2Add(agent->position, Vec2Scale(Vec2FromDeg(agent->heading), AGENT_SPEED * dt));
+
+    agent->position = agent->position + Vec2::fromDeg(agent->heading) * AGENT_SPEED * dt;
 }
 
 void InitField(Field *field) {
