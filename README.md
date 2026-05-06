@@ -1,4 +1,4 @@
-Abstract
+**Abstract**
   Slime molds are certain distanly related eukaryotic organisms with a
 tangled single-celled and multicellular life cycle, found in settings
 with similar environment to those favoured by mushrooms. A specific species
@@ -10,7 +10,7 @@ replicate this project digitally by using a multi-agent model of slime molds
 proposed by Reynolds (2010). The source code for this project is readily
 available at: https://www.github.com/2juko2wah/station-to-station.
 
-The Experiment
+**The Experiment**
   Tero's experiment is really interesting because on the surface it is 
 quite rudimentary. They basically place slime molds in a setting where
 city centers and metro stations in Tokyo city are represented by oats
@@ -20,7 +20,7 @@ formed by slime molds between food sources to the actual railroads system
 and note that the result was pretty similar to the real deal, sans certain
 characteristic differences.
 
-A no-brainer approach to path finding
+**A literally no-brainer approach to path finding**
   But how can these unicellular organisms without any centeral decision 
 making capabilities could replicate the railroad system made by very
 Japanese engineers known for their brilliancy and efficiency? The answer
@@ -34,7 +34,7 @@ channels or tunnels other slime molds can follow, while less preferred paths
 evaporate more quickly. This simple mechanism creates very beautiful patterns
 but also create the sense of a greater intelligence than there is.
 
-Frankenstein, or The (modern) Blob
+**Frankenstein, or The (Modern) Blob**
   This simple behavior begs the question, is such a simple behaviour can
 create highly efficient and desirable networks why shouldnt we try to 
 replicate it. Reylonds (2010) exactly aimed at this, creating an agent
