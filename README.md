@@ -34,7 +34,7 @@ channels or tunnels other slime molds can follow, while less preferred paths
 evaporate more quickly. This simple mechanism creates very beautiful patterns
 but also create the sense of a greater intelligence than there is.
 
-**Frankenstein, or The (Modern) Blob**
+**Our Method: Frankenstein, or The (Modern) Blob**
   This simple behavior begs the question, is such a simple behaviour can
 create highly efficient and desirable networks why shouldnt we try to 
 replicate it. Reylonds (2010) exactly aimed at this, creating an agent
@@ -50,9 +50,19 @@ information from the three sensors. If only the forward sensor is buzzing,
 an agent keeps it straight, if the left sensor outweights the others steers
 to left and if the right sensor outweights it steers to right. If none of the
 sensors have any reading it keeps its heading direction steady with a certain
-randomness added to keep exploration in tact. This simple agent structure is
-enough to replicate slime mold, Physarum polycephalum's behaviour to an 
-extent. To replicate the Tokyo experiment we also needed a certain way to 
+randomness added to keep exploration in tact. As this steering process keeps 
+moving indefinitely, molds leave trails for other molds to follow. To capture 
+the chemical process of the trails left by individual molds as they move we 
+basically take a two step approach as motivated by Reynolds, at each frame
+we multiply the entire grid by a number in the range of (0, 1) to capture
+evaporation/decay of chemical trails. To capture its diffusing/spreading,
+we basically go over each cell in our grid and check its four cell "Von Neumann" 
+neighborhood and take the average of the five cells, four in neighbours and 
+the cell itself, creating a relatively convincing form of spread. This simple
+agent structure is enough to replicate slime mold, Physarum polycephalum's 
+behaviour to an extent. 
+ 
+To replicate the Tokyo experiment we also needed a certain way to 
 represent stations, to keep our model simple we "implemented" oats by
 constantly emmiting signals at certain positions on the map as desired. 
 Unlike Tokyo city, Istanbul's terrain and roads are eponymously convoluted
@@ -65,3 +75,37 @@ thought. With out agents, digital oats and anti-oats we attempt to replicate
 a result similar to the Tokyo result on a region of Istanbul's railroad 
 system, specifically selected from an area that surround Kadir Has University.
   
+**A small tangent: A slime mold vs a thousand ants**
+TODO
+
+**Results and Conclusion**
+  After a few test runs pretty much all simulations of the same parameters
+converge to similar networks. Different parameters have varying degrees of 
+similar to the real railroad system surrounding Kadir Has University. Despite
+the expected varience over the set of parameters, we can easily say some patterns
+can be extracted. One of the clearest patterns to extract is the existence of 
+redundant roads. Perhaps in direct relation to being a simulation of a biological
+being certain stations have multiple paths connecting to their surrounding stations
+even when a link is not readily implied topologically, this is a very essential
+product of biological beings and more generally that of complex systems that is
+called resilience, a system's ability to tolerate faults or errors. In the case
+a connection is for any reason unusable agents can simply keep their traffic
+busy on the other path. Another intereseting property is fast adaptability, which
+is rather hard to compare with the real thing as there is not enough data about 
+faulty lines in Istanbul's transportation network and how its treated in real time
+but being a complex system, our slime mold system is very quick to find new roads
+when the user tries to baricade an existing path using anti-oaths. Now for the rose's
+thorns, being an agent based model, it thrives on a certain level of entropy, by 
+introducing a certain small value of randomness to the keep steady behaviour in steering
+overall more effective paths can be found as more possibilities get explored but this
+means our system is deeply non-deterministic though it is entirely possible to strip
+away all randomness, in such a case increasing the population of slime molds is more
+likely to find more efficient solutions. Which brings us to another drawback of using
+an agent based model into what is essentially a path finding problem. We cannot effectively
+prove the system's convergence, nor can we prove its efficiency, of course running the 
+simulation with the same parameters using different initial conditions, we can have an
+idea of its behaviour but we cannot pinpoint exact numbers which makes our simulation
+not exactly practical for grand scale usage. That being said our simulation is an 
+interesting display how very simple rules can create wildly complex systems, how biology
+thrives on it and how the biological process can be transferred to the digital 
+quite easily.
