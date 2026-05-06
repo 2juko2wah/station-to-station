@@ -60,9 +60,7 @@ we basically go over each cell in our grid and check its four cell "Von Neumann"
 neighborhood and take the average of the five cells, four in neighbours and 
 the cell itself, creating a relatively convincing form of spread. This simple
 agent structure is enough to replicate slime mold, Physarum polycephalum's 
-behaviour to an extent. 
- 
-To replicate the Tokyo experiment we also needed a certain way to 
+behaviour to an extent. To replicate the Tokyo experiment we also needed a certain way to 
 represent stations, to keep our model simple we "implemented" oats by
 constantly emmiting signals at certain positions on the map as desired. 
 Unlike Tokyo city, Istanbul's terrain and roads are eponymously convoluted
