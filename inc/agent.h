@@ -6,9 +6,6 @@
 #include "vec2.h"
 #include "defns.h"
 
-// [-255, 255]
-typedef int16_t scalar;
-
 typedef struct {
     Vec2 position;
     float heading;
@@ -16,12 +13,12 @@ typedef struct {
 
 typedef struct {
     Vec2 position;
-    scalar strength;
+    uint16_t strength;
 } Stimulus;
 
 // [TODO]: Really I just gotta get rid of this
 typedef struct {
-    int16_t trail[WIDTH][HEIGHT]; // this will eventually get its own static/global scope
+    int16_t trail[WIDTH][HEIGHT];
 
     uint8_t num_stimuli;
     uint8_t cap_stimuli;

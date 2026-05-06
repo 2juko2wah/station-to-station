@@ -28,7 +28,9 @@ static Field field;
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 
+
 static SDL_Texture *trail_texture = NULL;
+static SDL_Surface *map = NULL;
 static uint8_t pbuffer[HEIGHT][WIDTH][4];
 
 bool show_demo_window = true;
@@ -49,9 +51,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
+
+    map = SDL_LoadPNG("istanbul.demiryolu.png");
     state->main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
 
-    if (!SDL_CreateWindowAndRenderer("Slime Molds", WIDTH*state->main_scale, HEIGHT*state->main_scale, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window, &renderer)) {
+    if (!SDL_CreateWindowAndRenderer("Slime Molds", map->w, map->h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window, &renderer)) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -77,6 +81,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
     trail_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
     SDL_SetRenderLogicalPresentation(renderer, WIDTH*state->main_scale, HEIGHT*state->main_scale, SDL_LOGICAL_PRESENTATION_DISABLED);
+
+    
 
     InitField(&field);
     for (int i = 0; i < AGENT_CAPACITY; ++i) {
@@ -109,7 +115,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
                 PlaceStimulus(&field, Vec2((int)logical_x, (int)logical_y), 255);
                 break;
             case SDL_BUTTON_MIDDLE:
-                RemoveStimulus(&field, Vec2((int)logical_x, (int)logical_y));
                 RemoveStimulus(&field, Vec2((int)logical_x, (int)logical_y));
                 break;
             case SDL_BUTTON_RIGHT:
@@ -150,18 +155,20 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         UpdateAgent(&(field.agents[i]), &field, state->dt);
     }
 
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
     
+    SDL_RenderClear(renderer);
+    uint32_t *pixels = (uint32_t *)map->pixels;
     for (int y = 0; y < HEIGHT; ++y) {
         for (int x = 0; x < WIDTH; ++x) {
-            pbuffer[y][x][0] = 255;
-            pbuffer[y][x][1] = 0;
-            pbuffer[y][x][2] = 0;
-            pbuffer[y][x][3] = 0;
+            pbuffer[y][x][3] = (pixels[y * (map->pitch / 4) + x] & 0x000000FF);
+            pbuffer[y][x][2] = (pixels[y * (map->pitch / 4) + x] & 0x0000FF00) >> 8;
+            pbuffer[y][x][1] = (pixels[y * (map->pitch / 4) + x] & 0x00FF0000) >> 16;
+            pbuffer[y][x][0] = (pixels[y * (map->pitch / 4) + x] & 0xFF000000) >> 24;
+
+            int16_t value = (pixels[y * (map->pitch / 4) + x] & 0x000000FF) > 0 ? -255 : ((pixels[y * (map->pitch / 4) + x] & 0x0000FF00) > 0 ? 255 : 0);
+            field.trail[x][y] = value;
         }
     }
-
 
     for (int agent = 0; agent < AGENT_CAPACITY; ++agent) {
         Vec2 p = field.agents[agent].position;
@@ -174,10 +181,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         }
     }
 
-
     for (int agent = 0; agent < field.num_stimuli; ++agent) {
         Vec2 pos = field.stimuli[agent].position;
-        scalar str = field.stimuli[agent].strength;
+        uint16_t str = field.stimuli[agent].strength;
 
         for (int dy = -(STATION_HEIGHT / 2.0f); dy <= (STATION_HEIGHT / 2.0f); ++dy) {
             for (int dx = -(STATION_WIDTH / 2.0f); dx <= (STATION_WIDTH / 2.0f); ++dx) {
@@ -194,24 +200,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
     SDL_UpdateTexture(trail_texture, NULL, pbuffer, WIDTH*4);
 
-
-    ImGui_ImplSDLRenderer3_NewFrame();
-    ImGui_ImplSDL3_NewFrame();
-    ImGui::NewFrame();
-    
-    if (show_demo_window) {
-        ImGui::ShowDemoWindow(&show_demo_window);
-    }
-    
-    ImGui::Render();
-    
-    //SDL_SetRenderScale(renderer, state->io->DisplayFramebufferScale.x, state->io->DisplayFramebufferScale.y);
-    
-    SDL_RenderClear(renderer);
-
     SDL_RenderTexture(renderer,trail_texture, NULL, NULL);
-    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-
     SDL_RenderPresent(renderer);
 
     last_time = now;
